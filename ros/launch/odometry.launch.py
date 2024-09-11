@@ -62,11 +62,11 @@ class config:
 
 
 def generate_launch_description():
-    use_sim_time = LaunchConfiguration("use_sim_time", default="true")
+    use_sim_time = LaunchConfiguration("use_sim_time", default=False)
 
     # ROS configuration
-    pointcloud_topic = LaunchConfiguration("topic")
-    visualize = LaunchConfiguration("visualize", default="true")
+    pointcloud_topic = LaunchConfiguration("topic", default="/perception/lidar/fused_points")
+    visualize = LaunchConfiguration("visualize", default=False)
 
     # Optional ros bag play
     bagfile = LaunchConfiguration("bagfile", default="")
