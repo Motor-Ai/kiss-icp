@@ -73,6 +73,18 @@ inline geometry_msgs::msg::Pose sophusToPose(const Sophus::SE3d &T) {
     return t;
 }
 
+inline geometry_msgs::msg::Twist sophusToTwist(const Sophus::SE3d::Tangent &T) {
+    geometry_msgs::msg::Twist t;
+    t.linear.x = T[0];
+    t.linear.y = T[1];
+    t.linear.z = T[2];
+    t.angular.x = T[3];
+    t.angular.y = T[4];
+    t.angular.z = T[5];
+
+    return t;
+}
+
 inline Sophus::SE3d transformToSophus(const geometry_msgs::msg::TransformStamped &transform) {
     const auto &t = transform.transform;
     return Sophus::SE3d(

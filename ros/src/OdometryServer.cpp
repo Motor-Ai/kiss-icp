@@ -130,35 +130,52 @@ OdometryServer::OdometryServer(const rclcpp::NodeOptions &options)
 }
 
 void OdometryServer::RegisterFrame(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &msg) {
+    if (!initialized_) {
+        current_stamp_ = msg->header.stamp;
+        initialized_ = true;
+        return;
+    }
     const auto cloud_frame_id = msg->header.frame_id;
+    const auto egocentric_estimation = (base_frame_.empty() || base_frame_ == cloud_frame_id);
     const auto points = PointCloud2ToEigen(msg);
     const auto timestamps = GetTimestamps(msg);
+    const auto last_stamp = current_stamp_;
+    const auto last_pose = [&]() -> Sophus::SE3d {
+        if (egocentric_estimation) return kiss_icp_->pose();
+        const Sophus::SE3d cloud2base = LookupTransform(base_frame_, cloud_frame_id, tf2_buffer_);
+        return cloud2base * kiss_icp_->pose() * cloud2base.inverse();
+    }();
+    current_stamp_ = msg->header.stamp;
 
     // Register frame, main entry point to KISS-ICP pipeline
     const auto &[frame, keypoints] = kiss_icp_->RegisterFrame(points, timestamps);
 
     // Extract the last KISS-ICP pose, ego-centric to the LiDAR
-    const Sophus::SE3d kiss_pose = kiss_icp_->pose();
+    const auto pose = [&]() -> Sophus::SE3d {
+        if (egocentric_estimation) return kiss_icp_->pose();
+        const Sophus::SE3d cloud2base = LookupTransform(base_frame_, cloud_frame_id, tf2_buffer_);
+        return cloud2base * kiss_icp_->pose() * cloud2base.inverse();
+    }();
+
+    // Compute velocities, use the elapsed time between the current msg and the last received
+    const rclcpp::Duration elapsed_time = rclcpp::Time(current_stamp_) - rclcpp ::Time(last_stamp);
+    const Sophus::SE3d::Tangent delta_twist = (kiss_icp_->delta()).log();
+    const Sophus::SE3d::Tangent velocity = delta_twist / elapsed_time.seconds();
 
     // Spit the current estimated pose to ROS msgs handling the desired target frame
-    PublishOdometry(kiss_pose, msg->header);
+    PublishOdometry(pose, velocity, msg->header);
     // Publishing these clouds is a bit costly, so do it only if we are debugging
     if (publish_debug_clouds_) {
         PublishClouds(frame, keypoints, msg->header);
     }
 }
 
-void OdometryServer::PublishOdometry(const Sophus::SE3d &kiss_pose,
+void OdometryServer::PublishOdometry(const Sophus::SE3d &pose,
+                                     const Sophus::SE3d::Tangent &velocity,
                                      const std_msgs::msg::Header &header) {
-    // If necessary, transform the ego-centric pose to the specified base_link/base_footprint frame
     const auto cloud_frame_id = header.frame_id;
     const auto egocentric_estimation = (base_frame_.empty() || base_frame_ == cloud_frame_id);
     const auto moving_frame = egocentric_estimation ? cloud_frame_id : base_frame_;
-    const auto pose = [&]() -> Sophus::SE3d {
-        if (egocentric_estimation) return kiss_pose;
-        const Sophus::SE3d cloud2base = LookupTransform(base_frame_, cloud_frame_id, tf2_buffer_);
-        return cloud2base * kiss_pose * cloud2base.inverse();
-    }();
 
     // Broadcast the tf ---
     if (publish_odom_tf_) {
@@ -189,6 +206,14 @@ void OdometryServer::PublishOdometry(const Sophus::SE3d &kiss_pose,
     odom_msg.pose.covariance[21] = orientation_covariance_;
     odom_msg.pose.covariance[28] = orientation_covariance_;
     odom_msg.pose.covariance[35] = orientation_covariance_;
+    odom_msg.twist.twist = tf2::sophusToTwist(velocity);
+    odom_msg.twist.covariance.fill(0.0);
+    odom_msg.twist.covariance[0] = linear_velocity_covariance_;
+    odom_msg.twist.covariance[7] = linear_velocity_covariance_;
+    odom_msg.twist.covariance[14] = linear_velocity_covariance_;
+    odom_msg.twist.covariance[21] = angular_velocity_covariance_;
+    odom_msg.twist.covariance[28] = angular_velocity_covariance_;
+    odom_msg.twist.covariance[35] = angular_velocity_covariance_;
     odom_publisher_->publish(std::move(odom_msg));
 }
 

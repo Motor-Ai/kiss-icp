@@ -57,6 +57,8 @@ class config:
     # Covariance diagonal values
     position_covariance: float = 0.1
     orientation_covariance: float = 0.1
+    linear_velocity_covariance: float = 1.0
+    angular_velocity_covariance: float = 0.5
 
 
 def generate_launch_description():
@@ -107,6 +109,8 @@ def generate_launch_description():
                 # Fixed covariances
                 "position_covariance": config.position_covariance,
                 "orientation_covariance": config.orientation_covariance,
+                "linear_velocity_covariance": config.linear_velocity_covariance,
+                "angular_velocity_covariance": config.angular_velocity_covariance,
                 # ROS CLI arguments
                 "publish_debug_clouds": visualize,
                 "use_sim_time": use_sim_time,

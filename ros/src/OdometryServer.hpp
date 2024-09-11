@@ -49,7 +49,9 @@ private:
     void RegisterFrame(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &msg);
 
     /// Stream the estimated pose to ROS
-    void PublishOdometry(const Sophus::SE3d &kiss_pose, const std_msgs::msg::Header &header);
+    void PublishOdometry(const Sophus::SE3d &kiss_pose,
+                         const Sophus::SE3d::Tangent &velocity,
+                         const std_msgs::msg::Header &header);
 
     /// Stream the debugging point clouds for visualization (if required)
     void PublishClouds(const std::vector<Eigen::Vector3d> frame,
@@ -84,6 +86,12 @@ private:
     /// Covariance diagonal
     double position_covariance_;
     double orientation_covariance_;
+    double linear_velocity_covariance_;
+    double angular_velocity_covariance_;
+
+    /// Add Time Tracking Variables
+    bool initialized_{false};
+    builtin_interfaces::msg::Time current_stamp_;
 };
 
 }  // namespace kiss_icp_ros
