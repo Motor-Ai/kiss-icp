@@ -65,7 +65,8 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration("use_sim_time", default=False)
 
     # ROS configuration
-    pointcloud_topic = LaunchConfiguration("topic", default="/perception/lidar/fused_points")
+    pointcloud_topic = LaunchConfiguration("topic_pc2", default="/perception/lidar/fused_points") 
+    odom_topic = LaunchConfiguration("topic_odom", default="/perception/lidar/kissICP/odom") 
     visualize = LaunchConfiguration("visualize", default=False)
 
     # Optional ros bag play
@@ -85,6 +86,7 @@ def generate_launch_description():
         output="screen",
         remappings=[
             ("pointcloud_topic", pointcloud_topic),
+            ("/kiss/odometry", odom_topic),
         ],
         parameters=[
             {
