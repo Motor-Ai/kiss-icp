@@ -140,11 +140,6 @@ void OdometryServer::RegisterFrame(const sensor_msgs::msg::PointCloud2::ConstSha
     const auto points = PointCloud2ToEigen(msg);
     const auto timestamps = GetTimestamps(msg);
     const auto last_stamp = current_stamp_;
-    const auto last_pose = [&]() -> Sophus::SE3d {
-        if (egocentric_estimation) return kiss_icp_->pose();
-        const Sophus::SE3d cloud2base = LookupTransform(base_frame_, cloud_frame_id, tf2_buffer_);
-        return cloud2base * kiss_icp_->pose() * cloud2base.inverse();
-    }();
     current_stamp_ = msg->header.stamp;
 
     // Register frame, main entry point to KISS-ICP pipeline
