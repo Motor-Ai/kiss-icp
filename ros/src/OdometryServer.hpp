@@ -54,8 +54,8 @@ private:
                          const std_msgs::msg::Header &header);
 
     /// Stream the debugging point clouds for visualization (if required)
-    void PublishClouds(const std::vector<Eigen::Vector3d> frame,
-                       const std::vector<Eigen::Vector3d> keypoints,
+    void PublishClouds(const std::vector<Eigen::Vector3d> &frame,
+                       const std::vector<Eigen::Vector3d> &keypoints,
                        const std_msgs::msg::Header &header);
 
 private:
